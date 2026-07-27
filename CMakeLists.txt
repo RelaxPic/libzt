@@ -708,6 +708,15 @@ if(BUILD_SHARED_LIB)
 
     if(BUILD_ANDROID)
         target_link_options(${DYNAMIC_LIB_NAME} PRIVATE "-Wl,-z,max-page-size=16384")
+        if(ZTS_ENABLE_JAVA)
+            target_link_options(
+                ${DYNAMIC_LIB_NAME}
+                PRIVATE "-Wl,--version-script=${PROJ_DIR}/src/bindings/java/libzt.map")
+        endif()
+        foreach(android_size_target
+                ${DYNAMIC_LIB_NAME} zt_pic lwip_pic zto_pic natpmp_pic miniupnpc_pic)
+            target_compile_options(${android_size_target} PRIVATE -Oz)
+        endforeach()
         target_link_libraries(${DYNAMIC_LIB_NAME} android log)
         if(CMAKE_ANDROID_ARCH_ABI STREQUAL "arm64-v8a")
             target_compile_options(zto_pic PRIVATE -march=armv8-a+crypto)

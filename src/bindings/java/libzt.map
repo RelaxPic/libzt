@@ -1,0 +1,6 @@
+LIBZT {
+    global:
+        Java_com_zerotier_sockets_*;
+    local:
+        *;
+};
