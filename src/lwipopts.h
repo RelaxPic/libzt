@@ -62,6 +62,7 @@
 #endif
 // Sockets
 #define LWIP_SOCKET                     1
+#define LWIP_RAW                        1
 #define LWIP_COMPAT_SOCKETS             0
 #define LWIP_POSIX_SOCKETS_IO_NAMES     0
 #define LWIP_SO_SNDTIMEO                1

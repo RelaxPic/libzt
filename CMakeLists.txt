@@ -707,6 +707,7 @@ if(BUILD_SHARED_LIB)
     set(CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS ON)
 
     if(BUILD_ANDROID)
+        target_link_options(${DYNAMIC_LIB_NAME} PRIVATE "-Wl,-z,max-page-size=16384")
         target_link_libraries(${DYNAMIC_LIB_NAME} android log)
         if(CMAKE_ANDROID_ARCH_ABI STREQUAL "arm64-v8a")
             target_compile_options(zto_pic PRIVATE -march=armv8-a+crypto)
