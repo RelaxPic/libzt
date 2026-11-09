@@ -95,7 +95,7 @@ void Events::run()
 
 bool Events::enqueue(unsigned int event_code, const void* arg, int len)
 {
-    if (! _enabled) {
+    if (! _enabled.load()) {
         return false;
     }
     if (_callbackMsgQueue.size_approx() > 1024) {
@@ -297,12 +297,12 @@ bool Events::getState(uint8_t testFlags)
 
 void Events::enable()
 {
-    _enabled = true;
+    _enabled.store(true);
 }
 
 void Events::disable()
 {
-    _enabled = false;
+    _enabled.store(false);
 }
 
 }   // namespace ZeroTier

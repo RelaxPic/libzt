@@ -459,16 +459,12 @@ JNIEXPORT jint JNICALL Java_com_zerotier_sockets_ZeroTierNative_zts_1node_1get_1
 
 JNIEXPORT jint JNICALL Java_com_zerotier_sockets_ZeroTierNative_zts_1node_1stop(JNIEnv* jenv, jclass clazz)
 {
-    int res = zts_node_stop();
-    java_detach_from_thread();
-    return res;
+    return zts_node_stop();
 }
 
 JNIEXPORT jint JNICALL Java_com_zerotier_sockets_ZeroTierNative_zts_1node_1free(JNIEnv* jenv, jclass clazz)
 {
-    int res = zts_node_free();
-    java_detach_from_thread();
-    return res;
+    return zts_node_free();
 }
 
 JNIEXPORT jint JNICALL
@@ -530,6 +526,14 @@ JNIEXPORT jint JNICALL
 Java_com_zerotier_sockets_ZeroTierNative_zts_1init_1set_1port(JNIEnv* jenv, jclass clazz, short port)
 {
     return zts_init_set_port(port);
+}
+
+JNIEXPORT jint JNICALL Java_com_zerotier_sockets_ZeroTierNative_zts_1init_1set_1low_1bandwidth_1mode(
+    JNIEnv* jenv,
+    jclass clazz,
+    jint enabled)
+{
+    return zts_init_set_low_bandwidth_mode(enabled);
 }
 
 JNIEXPORT jint JNICALL

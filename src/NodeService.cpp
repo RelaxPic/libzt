@@ -179,6 +179,7 @@ NodeService::NodeService()
     , _fallbackRelayAddress(ZT_TCP_FALLBACK_RELAY)
     , _allowTcpRelay(true)
     , _forceTcpRelay(false)
+    , _lowBandwidthMode(false)
     , _lastSendToGlobalV4(0)
     , _tcpFallbackTunnel((TcpConnection*)0)
     , _lastRestart(0)
@@ -251,6 +252,7 @@ NodeService::ReasonForTermination NodeService::run()
             cb.pathCheckFunction = SnodePathCheckFunction;
             cb.pathLookupFunction = SnodePathLookupFunction;
             _node = new Node(this, (void*)0, &cb, OSUtils::now());
+            _node->setLowBandwidthMode(_lowBandwidthMode);
         }
 
         unsigned int minPort = (_randomPortRangeStart ? _randomPortRangeStart : 20000);
@@ -559,6 +561,7 @@ void NodeService::terminate()
     _allowPeerCaching = true;
     _allowIdentityCaching = true;
     _allowRootSetCaching = true;
+    _lowBandwidthMode = false;
     memset(_publicIdStr, 0, ZT_IDENTITY_STRING_BUFFER_LENGTH);
     memset(_secretIdStr, 0, ZT_IDENTITY_STRING_BUFFER_LENGTH);
     _interfacePrefixBlacklist.clear();
@@ -2188,7 +2191,7 @@ int NodeService::setLowBandwidthMode(bool enabled)
     if (_run) {
         return ZTS_ERR_SERVICE;
     }
-    _node->setLowBandwidthMode(enabled);
+    _lowBandwidthMode = enabled;
     return ZTS_ERR_OK;
 }
 

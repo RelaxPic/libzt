@@ -126,6 +126,17 @@ public class ZeroTierNode {
     }
 
     /**
+     * Enable or disable low-bandwidth mode before starting the node.
+     *
+     * @param enabled Whether low-bandwidth mode is enabled
+     * @return Standard result code
+     */
+    public int initSetLowBandwidthMode(boolean enabled)
+    {
+        return ZeroTierNative.zts_init_set_low_bandwidth_mode(enabled ? 1 : 0);
+    }
+
+    /**
      * (Optional) Set the event handler function. Note that this is an
      * initialization method that can only be called before {@code start()}.
      *

@@ -22,6 +22,8 @@
 
 #include "ZeroTierSockets.h"
 
+#include <atomic>
+
 #ifdef __WINDOWS__
 #include <basetsd.h>
 #endif
@@ -39,6 +41,9 @@
 // Lock service and check that it is not currently running
 #define ACQUIRE_SERVICE_OFFLINE()                                                                                      \
     Mutex::Lock _ls(service_m);                                                                                        \
+    if (service_stopping) {                                                                                             \
+        return ZTS_ERR_SERVICE;                                                                                        \
+    }                                                                                                                  \
     if (zts_service && zts_service->isRunning()) {                                                                     \
         return ZTS_ERR_SERVICE;                                                                                        \
     }                                                                                                                  \
@@ -78,6 +83,7 @@ extern jmethodID _userCallbackMethodRef;
 
 extern volatile uint8_t service_state;
 extern int last_state_check;
+extern bool service_stopping;
 
 inline int transport_ok()
 {
@@ -91,7 +97,7 @@ inline int transport_ok()
 #define ZTS_CALLBACK_PROCESSING_INTERVAL 25
 
 class Events {
-    bool _enabled;
+    std::atomic<bool> _enabled;
 
   public:
     Events() : _enabled(false)

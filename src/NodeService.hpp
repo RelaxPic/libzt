@@ -201,6 +201,7 @@ class NodeService {
     InetAddress _fallbackRelayAddress;
     bool _allowTcpRelay;
     bool _forceTcpRelay;
+    bool _lowBandwidthMode;
     uint64_t _lastSendToGlobalV4;
 
     // Active TCP/IP connections

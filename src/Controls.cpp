@@ -50,9 +50,32 @@ extern uint8_t allowPeerCaching;
 
 NodeService* zts_service;
 Events* zts_events;
+bool service_stopping = false;
 
 extern Mutex events_m;
 Mutex service_m;
+Mutex service_thread_m;
+#if defined(__WINDOWS__)
+HANDLE service_thread = NULL;
+#else
+pthread_t service_thread;
+#endif
+bool service_thread_started = false;
+
+static void join_service_thread_locked()
+{
+    if (! service_thread_started) {
+        return;
+    }
+#if defined(__WINDOWS__)
+    WaitForSingleObject(service_thread, INFINITE);
+    CloseHandle(service_thread);
+    service_thread = NULL;
+#else
+    pthread_join(service_thread, (void**)0);
+#endif
+    service_thread_started = false;
+}
 
 int init_subsystems()
 {
@@ -544,12 +567,10 @@ void* _runNodeService(void* arg)
         delete zts_service;
         zts_service = (NodeService*)0;
         service_m.unlock();
-        events_m.lock();
         zts_util_delay(ZTS_CALLBACK_PROCESSING_INTERVAL * 2);
         if (zts_events) {
             zts_events->disable();
         }
-        events_m.unlock();
     }
     catch (...) {
     }
@@ -561,6 +582,15 @@ void* _runNodeService(void* arg)
 
 int zts_node_start()
 {
+    Mutex::Lock _lt(service_thread_m);
+    {
+        Mutex::Lock _ls(service_m);
+        if (service_stopping || (zts_service && zts_service->isRunning())) {
+            return ZTS_ERR_SERVICE;
+        }
+    }
+    // A service that terminated asynchronously still owns a joinable thread.
+    join_service_thread_locked();
     ACQUIRE_SERVICE_OFFLINE();
     // Start TCP/IP stack
     zts_lwip_driver_init();
@@ -586,17 +616,22 @@ int zts_node_start()
     // Start ZeroTier service
 #if defined(__WINDOWS__)
     HANDLE serviceThread = CreateThread(NULL, 0, _runNodeService, (void*)NULL, 0, NULL);
-    // TODO: Check success
+    if (! serviceThread) {
+        res = ZTS_ERR_GENERAL;
+    }
 #else
-    pthread_t service_thread;
-    if ((res = pthread_create(&service_thread, NULL, _runNodeService, (void*)NULL)) != 0) {}
+    pthread_t serviceThread;
+    if ((res = pthread_create(&serviceThread, NULL, _runNodeService, (void*)NULL)) != 0) {}
 #endif
 #if defined(__linux__)
     // pthread_setname_np(service_thread, ZTS_SERVICE_THREAD_NAME);
 #endif
     if (res != ZTS_ERR_OK) {
         zts_events->clrState(ZTS_STATE_NODE_RUNNING);
+        return ZTS_ERR_GENERAL;
     }
+    service_thread = serviceThread;
+    service_thread_started = true;
     zts_events->setState(ZTS_STATE_NODE_RUNNING);
     return ZTS_ERR_OK;
 }
@@ -621,27 +656,45 @@ int zts_node_get_port()
 
 int zts_node_stop()
 {
-    ACQUIRE_SERVICE(ZTS_ERR_SERVICE);
-    zts_events->clrState(ZTS_STATE_NODE_RUNNING);
-    zts_service->terminate();
+    Mutex::Lock _lt(service_thread_m);
+    {
+        ACQUIRE_SERVICE(ZTS_ERR_SERVICE);
+        service_stopping = true;
+        zts_events->clrState(ZTS_STATE_NODE_RUNNING);
+        zts_service->terminate();
 #if defined(__WINDOWS__)
-    WSACleanup();
+        WSACleanup();
 #endif
+    }
+    join_service_thread_locked();
+    {
+        Mutex::Lock _ls(service_m);
+        service_stopping = false;
+    }
     return ZTS_ERR_OK;
 }
 
 int zts_node_free()
 {
-    ACQUIRE_SERVICE(ZTS_ERR_SERVICE);
-    zts_events->setState(ZTS_STATE_FREE_CALLED);
-    zts_events->clrState(ZTS_STATE_NODE_RUNNING);
-    zts_service->terminate();
+    Mutex::Lock _lt(service_thread_m);
+    {
+        ACQUIRE_SERVICE(ZTS_ERR_SERVICE);
+        service_stopping = true;
+        zts_events->setState(ZTS_STATE_FREE_CALLED);
+        zts_events->clrState(ZTS_STATE_NODE_RUNNING);
+        zts_service->terminate();
 #if defined(__WINDOWS__)
-    WSACleanup();
+        WSACleanup();
 #endif
+    }
+    join_service_thread_locked();
     zts_lwip_driver_shutdown();
     delete zts_events;
     zts_events = (Events*)0;
+    {
+        Mutex::Lock _ls(service_m);
+        service_stopping = false;
+    }
     return ZTS_ERR_OK;
 }
 
